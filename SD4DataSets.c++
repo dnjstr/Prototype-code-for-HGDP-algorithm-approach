@@ -9,6 +9,14 @@
 #include <queue>
 #include <chrono>
 #include <iomanip>
+#include <random>
+
+
+
+
+
+
+
 
 // Class representing an activity
 class Activity {
@@ -19,39 +27,74 @@ public:
     double weight;
     std::unordered_map<std::string, double> resources;
 
+
+
+
+
+
+
+
     Activity(int id, double start, double finish, double weight)
         : id(id), start_time(start), finish_time(finish), weight(weight) {}
+
+
+
+
+
+
+
 
     // Add resource requirement
     void addResource(const std::string& resource_name, double amount) {
         resources[resource_name] = amount;
     }
 
+
+
+
+
+
+
+
     // Value density (weight per unit time)
     double valueDensity() const {
         return weight / (finish_time - start_time);
     }
 
+
+
+
+
+
+
+
     // Print activity details
     void print() const {
-        std::cout << "Activity " << id << ": [" << start_time << ", " << finish_time 
+        std::cout << "Activity " << id << ": [" << start_time << ", " << finish_time
                   << "), weight=" << weight << std::endl;
     }
 };
+
+
+
+
+
+
+
 
 // Class representing a participant
 class Participant {
 public:
     int id;
     std::unordered_map<std::string, double> resource_capacities;
-    
+   
     Participant(int id) : id(id) {}
-    
+   
     // Add resource capacity
     void addResourceCapacity(const std::string& resource_name, double capacity) {
         resource_capacities[resource_name] = capacity;
     }
-    
+   
     // Print participant details
     void print() const {
         std::cout << "Participant " << id << std::endl;
@@ -61,24 +104,38 @@ public:
     }
 };
 
+
+
+
+
+
+
+
 // Class representing a time slot
 class TimeSlot {
 public:
     double start_time;
     double end_time;
-    
+   
     TimeSlot(double start, double end) : start_time(start), end_time(end) {}
-    
+   
     // Check if a time slot contains another time interval
     bool contains(double start, double finish) const {
         return start_time <= start && end_time >= finish;
     }
-    
+   
     // Duration of the time slot
     double duration() const {
         return end_time - start_time;
     }
 };
+
+
+
+
+
+
+
 
 // Class implementing the hybrid algorithm
 class HybridAlgorithm {
@@ -87,7 +144,7 @@ private:
     std::vector<Participant> participants;
     std::unordered_map<int, int> allocation; // Activity ID -> Participant ID
     double fairness_epsilon; // Fairness tolerance parameter
-    
+   
 public:
     HybridAlgorithm(const std::vector<Activity>& acts, const std::vector<Participant>& parts, double epsilon = 0.1)
         : activities(acts), participants(parts), fairness_epsilon(epsilon) {
@@ -96,28 +153,55 @@ public:
             allocation[activity.id] = -1;
         }
     }
-    
+   
     // Run the complete hybrid algorithm
     void run() {
         auto start_time = std::chrono::high_resolution_clock::now();
-        
+
+
+
+
         std::cout << "Phase 1: Initial Greedy Allocation" << std::endl;
+        auto phase1_start = std::chrono::high_resolution_clock::now();
         initialGreedyAllocation();
+        auto phase1_end = std::chrono::high_resolution_clock::now();
         printAllocationSummary();
-        
+        std::cout << "Phase 1 runtime: "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(phase1_end - phase1_start).count()
+                  << " ms" << std::endl;
+
+
+
+
         std::cout << "\nPhase 2: Dynamic Programming Refinement" << std::endl;
+        auto phase2_start = std::chrono::high_resolution_clock::now();
         dynamicProgrammingRefinement();
+        auto phase2_end = std::chrono::high_resolution_clock::now();
         printAllocationSummary();
-        
+        std::cout << "Phase 2 runtime: "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(phase2_end - phase2_start).count()
+                  << " ms" << std::endl;
+
+
+
+
         std::cout << "\nPhase 3: Fairness Optimization" << std::endl;
+        auto phase3_start = std::chrono::high_resolution_clock::now();
         fairnessOptimization();
+        auto phase3_end = std::chrono::high_resolution_clock::now();
         printAllocationSummary();
-        
+        std::cout << "Phase 3 runtime: "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(phase3_end - phase3_start).count()
+                  << " ms" << std::endl;
+
+
+
+
         auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-        std::cout << "\nTotal execution time: " << duration.count() << " ms" << std::endl;
+        auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        std::cout << "\nTotal execution time: " << total_duration.count() << " ms" << std::endl;
     }
-    
+   
     // Phase 1: Initial Greedy Allocation
     void initialGreedyAllocation() {
         // Sort activities by value density (weight/duration)
@@ -125,49 +209,76 @@ public:
         for (size_t i = 0; i < activities.size(); i++) {
             sorted_activities.push_back(i);
         }
-        
+
+
+
+
         std::sort(sorted_activities.begin(), sorted_activities.end(),
-                 [this](int a, int b) {
-                     return activities[a].valueDensity() > activities[b].valueDensity();
-                 });
-        
-        // Initialize available time for each participant
+                  [this](int a, int b) {
+                      return activities[a].valueDensity() > activities[b].valueDensity();
+                  });
+
+
+
+
+        // Initialize available time and resource usage for each participant
         std::vector<double> available_time(participants.size(), 0);
-        std::vector<double> total_value(participants.size(), 0);
-        
+        std::vector<std::unordered_map<std::string, double>> resource_usage(participants.size());
+
+
+
+
         // Allocate activities
         for (int activity_idx : sorted_activities) {
             const Activity& activity = activities[activity_idx];
-            
-            // Find participant with minimum total value whose available time doesn't conflict
+
+
+
+
+            // Find the best participant for this activity
             int best_participant = -1;
             double min_value = std::numeric_limits<double>::max();
-            
+
+
+
+
             for (size_t j = 0; j < participants.size(); j++) {
-                if (available_time[j] <= activity.start_time && 
+                if (available_time[j] <= activity.start_time &&
                     hasResourceCapacity(j, activity) &&
-                    total_value[j] < min_value) {
-                    
+                    resourceUsageFits(j, activity, resource_usage[j]) &&
+                    min_value > available_time[j]) {
                     best_participant = j;
-                    min_value = total_value[j];
+                    min_value = available_time[j];
                 }
             }
-            
-            // If we found a valid participant, assign the activity
+
+
+
+
+            // Assign the activity if a valid participant is found
             if (best_participant != -1) {
                 allocation[activity.id] = participants[best_participant].id;
                 available_time[best_participant] = activity.finish_time;
-                total_value[best_participant] += activity.weight;
+
+
+
+
+                // Update resource usage
+                for (const auto& [resource, amount] : activity.resources) {
+                    resource_usage[best_participant][resource] += amount;
+                }
             }
         }
     }
-    
+   
     // Phase 2: Dynamic Programming Refinement
     void dynamicProgrammingRefinement() {
-        // For each participant, construct timeline and apply weighted interval scheduling
         for (size_t p_idx = 0; p_idx < participants.size(); p_idx++) {
             const Participant& participant = participants[p_idx];
-            
+
+
+
+
             // Collect activities assigned to this participant
             std::vector<int> assigned_activities;
             for (size_t i = 0; i < activities.size(); i++) {
@@ -175,13 +286,10 @@ public:
                     assigned_activities.push_back(i);
                 }
             }
-            
-            // Sort assigned activities by finish time for weighted interval scheduling
-            std::sort(assigned_activities.begin(), assigned_activities.end(),
-                     [this](int a, int b) {
-                         return activities[a].finish_time < activities[b].finish_time;
-                     });
-            
+
+
+
+
             // Find all unassigned activities that this participant could potentially handle
             std::vector<int> candidate_activities;
             for (size_t i = 0; i < activities.size(); i++) {
@@ -189,191 +297,221 @@ public:
                     candidate_activities.push_back(i);
                 }
             }
-            
+
+
+
+
             // Combine assigned and candidate activities
             std::vector<int> all_activities = assigned_activities;
             all_activities.insert(all_activities.end(), candidate_activities.begin(), candidate_activities.end());
-            
+
+
+
+
             // Run weighted interval scheduling on the combined set
             std::vector<int> optimal_subset = weightedIntervalScheduling(all_activities);
-            
+
+
+
+
             // Update allocation - only keep activities assigned to this participant
-            // First, clear all assignments for this participant
             for (int act_idx : assigned_activities) {
                 allocation[activities[act_idx].id] = -1;
             }
-            
-            // Assign the optimal subset to this participant
             for (int act_idx : optimal_subset) {
                 allocation[activities[act_idx].id] = participant.id;
             }
         }
     }
-    
+   
     // Phase 3: Fairness Optimization
     void fairnessOptimization() {
-        // Calculate current value distribution
-        std::vector<double> values(participants.size(), 0);
-        for (size_t i = 0; i < activities.size(); i++) {
-            int participant_id = allocation[activities[i].id];
-            if (participant_id != -1) {
-                int p_idx = getParticipantIndex(participant_id);
-                if (p_idx != -1) { // Add check to ensure valid p_idx
-                    values[p_idx] += activities[i].weight;
-                }
-            }
-        }
-        
-        // Calculate target fair value
-        double total_value = 0;
-        for (double val : values) {
-            total_value += val;
-        }
-        double target_value = total_value / participants.size();
-        
-        // Identify high-value and low-value participants
-        std::vector<int> high_value_participants;
-        std::vector<int> low_value_participants;
-        
-        for (size_t i = 0; i < participants.size(); i++) {
-            if (values[i] > target_value + fairness_epsilon) {
-                high_value_participants.push_back(i);
-            } else if (values[i] < target_value - fairness_epsilon) {
-                low_value_participants.push_back(i);
-            }
-        }
-        
-        // While there are high-value and low-value participants, try to transfer activities
-        while (!high_value_participants.empty() && !low_value_participants.empty()) {
-            int high_idx = high_value_participants[0];
-            int low_idx = low_value_participants[0];
-            Participant& high_participant = participants[high_idx];
-            Participant& low_participant = participants[low_idx];
-            
-            // Find best activity to transfer
-            int best_activity = -1;
-            double best_improvement = -1;
-            
+        bool improved = true;
+
+
+
+
+        while (improved) {
+            improved = false;
+
+
+
+
+            // Calculate current value distribution
+            std::vector<double> values(participants.size(), 0);
             for (size_t i = 0; i < activities.size(); i++) {
-                const Activity& activity = activities[i];
-                
-                // Check if activity is assigned to high-value participant
-                if (allocation[activity.id] == high_participant.id) {
-                    // Check if activity can be transferred to low-value participant
-                    if (canTransferActivity(high_idx, low_idx, i)) {
-                        // Calculate improvement in fairness
-                        double current_deviation = std::abs(values[high_idx] - target_value) + 
-                                                  std::abs(values[low_idx] - target_value);
-                        
-                        double new_high_value = values[high_idx] - activity.weight;
-                        double new_low_value = values[low_idx] + activity.weight;
-                        
-                        double new_deviation = std::abs(new_high_value - target_value) + 
-                                              std::abs(new_low_value - target_value);
-                        
-                        double improvement = current_deviation - new_deviation;
-                        
-                        if (improvement > best_improvement) {
-                            best_improvement = improvement;
-                            best_activity = i;
-                        }
+                int participant_id = allocation[activities[i].id];
+                if (participant_id != -1) {
+                    int p_idx = getParticipantIndex(participant_id);
+                    if (p_idx != -1) {
+                        values[p_idx] += activities[i].weight;
                     }
                 }
             }
-            
-            // If we found an activity to transfer, update allocation
-            if (best_activity != -1) {
-                const Activity& activity = activities[best_activity];
-                
-                // Update allocation and values
-                allocation[activity.id] = low_participant.id;
-                values[high_idx] -= activity.weight;
-                values[low_idx] += activity.weight;
-                
-                // Update high/low participants lists
-                if (values[high_idx] <= target_value + fairness_epsilon) {
-                    high_value_participants.erase(high_value_participants.begin());
+
+
+
+
+            // Calculate target fair value
+            double total_value = std::accumulate(values.begin(), values.end(), 0.0);
+            double target_value = total_value / participants.size();
+
+
+
+
+            // Identify high-value and low-value participants
+            std::vector<int> high_value_participants;
+            std::vector<int> low_value_participants;
+
+
+
+
+            for (size_t i = 0; i < participants.size(); i++) {
+                if (values[i] > target_value + fairness_epsilon) {
+                    high_value_participants.push_back(i);
+                } else if (values[i] < target_value - fairness_epsilon) {
+                    low_value_participants.push_back(i);
                 }
-                if (values[low_idx] >= target_value - fairness_epsilon) {
-                    low_value_participants.erase(low_value_participants.begin());
-                }
-            } else {
-                // If no activity can be transferred, move to next pair
-                if (high_value_participants.size() > 1 && low_value_participants.size() > 1) {
-                    // Try with next pair
-                    std::swap(high_value_participants[0], high_value_participants[1]);
-                    std::swap(low_value_participants[0], low_value_participants[1]);
-                } else {
-                    // No more transfers possible
-                    break;
+            }
+
+
+
+
+            // Optimize fairness by transferring activities
+            for (int high_idx : high_value_participants) {
+                for (int low_idx : low_value_participants) {
+                    if (values[high_idx] <= target_value + fairness_epsilon ||
+                        values[low_idx] >= target_value - fairness_epsilon) {
+                        continue;
+                    }
+
+
+
+
+                    // Find the best activity to transfer
+                    int best_activity = -1;
+                    double best_improvement = -1;
+
+
+
+
+                    for (size_t i = 0; i < activities.size(); i++) {
+                        const Activity& activity = activities[i];
+
+
+
+
+                        if (allocation[activity.id] == participants[high_idx].id &&
+                            canTransferActivity(high_idx, low_idx, i)) {
+                            double current_deviation = std::abs(values[high_idx] - target_value) +
+                                                       std::abs(values[low_idx] - target_value);
+
+
+
+
+                            double new_high_value = values[high_idx] - activity.weight;
+                            double new_low_value = values[low_idx] + activity.weight;
+
+
+
+
+                            double new_deviation = std::abs(new_high_value - target_value) +
+                                                   std::abs(new_low_value - target_value);
+
+
+
+
+                            double improvement = current_deviation - new_deviation;
+
+
+
+
+                            if (improvement > best_improvement) {
+                                best_improvement = improvement;
+                                best_activity = i;
+                            }
+                        }
+                    }
+
+
+
+
+                    // Transfer the best activity if found
+                    if (best_activity != -1) {
+                        const Activity& activity = activities[best_activity];
+                        allocation[activity.id] = participants[low_idx].id;
+                        values[high_idx] -= activity.weight;
+                        values[low_idx] += activity.weight;
+                        improved = true;
+                    }
                 }
             }
         }
     }
-    
+   
     // Check if participant has sufficient resources for an activity
     bool hasResourceCapacity(int participant_idx, const Activity& activity) const {
         const Participant& participant = participants[participant_idx];
-        
+       
         for (const auto& [resource, required] : activity.resources) {
             auto it = participant.resource_capacities.find(resource);
-            
+           
             // If participant doesn't have this resource or has insufficient capacity
             if (it == participant.resource_capacities.end() || it->second < required) {
                 return false;
             }
         }
-        
+       
         return true;
     }
-    
+   
     // Check if an activity can be transferred between participants
     bool canTransferActivity(int from_idx, int to_idx, int activity_idx) const {
         const Activity& activity = activities[activity_idx];
-        
+       
         // Check if target participant has resource capacity
         if (!hasResourceCapacity(to_idx, activity)) {
             return false;
         }
-        
+       
         // Check if activity conflicts with target participant's timeline
         for (size_t i = 0; i < activities.size(); i++) {
-            if (i != activity_idx && 
+            if (i != activity_idx &&
                 allocation.count(activities[i].id) > 0 && // Check if key exists first
                 allocation.at(activities[i].id) == participants[to_idx].id &&
                 activitiesOverlap(activities[i], activity)) {
                 return false;
             }
         }
-        
+       
         return true;
     }
-    
+   
     // Construct timeline of non-overlapping time slots
     std::vector<TimeSlot> constructTimeline(const std::vector<int>& assigned_activities) const {
         double horizon = 0;
         for (size_t i = 0; i < activities.size(); i++) {
             horizon = std::max(horizon, activities[i].finish_time);
         }
-        
+       
         // Start with the entire time horizon
         std::vector<TimeSlot> timeline;
         timeline.emplace_back(0, horizon);
-        
+       
         // Remove time slots occupied by assigned activities
         for (int act_idx : assigned_activities) {
             const Activity& activity = activities[act_idx];
-            
+           
             for (auto it = timeline.begin(); it != timeline.end(); ) {
                 // Check if current slot overlaps with activity
                 if (it->start_time < activity.finish_time && it->end_time > activity.start_time) {
                     // Activity overlaps with this slot
                     double slot_start = it->start_time;
                     double slot_end = it->end_time;
-                    
+                   
                     // Remove current slot
                     it = timeline.erase(it);
-                    
+                   
                     // Add back segments that don't overlap with activity
                     if (slot_start < activity.start_time) {
                         timeline.emplace_back(slot_start, activity.start_time);
@@ -386,29 +524,29 @@ public:
                 }
             }
         }
-        
+       
         // Sort timeline by start time
-        std::sort(timeline.begin(), timeline.end(), 
+        std::sort(timeline.begin(), timeline.end(),
                  [](const TimeSlot& a, const TimeSlot& b) {
                      return a.start_time < b.start_time;
                  });
                  
         return timeline;
     }
-    
+   
     // Weighted interval scheduling algorithm using dynamic programming
     std::vector<int> weightedIntervalScheduling(const std::vector<int>& activity_indices) const {
         if (activity_indices.empty()) {
             return {};
         }
-    
+   
         // Sort activities by finish time
         std::vector<int> sorted = activity_indices;
         std::sort(sorted.begin(), sorted.end(),
             [this](int a, int b) {
                 return activities[a].finish_time < activities[b].finish_time;
             });
-    
+   
         // Precompute p[i] - the last compatible activity before i
         std::vector<int> p(sorted.size(), -1);
         for (size_t i = 1; i < sorted.size(); i++) {
@@ -419,7 +557,7 @@ public:
                 }
             }
         }
-    
+   
         // Dynamic programming table
         std::vector<double> dp(sorted.size() + 1, 0);
         for (size_t i = 1; i <= sorted.size(); i++) {
@@ -429,7 +567,7 @@ public:
             }
             dp[i] = std::max(include, dp[i-1]);
         }
-    
+   
         // Backtrack to find the optimal set
         std::vector<int> result;
         int i = sorted.size();
@@ -450,18 +588,18 @@ public:
                 }
             }
         }
-    
+   
         return result;
     }
-    
+   
     // Print allocation summary
     void printAllocationSummary() const {
         // Count assigned activities and total weight
         int assigned_count = 0;
         double total_weight = 0;
-        
+       
         std::vector<double> participant_values(participants.size(), 0);
-        
+       
         for (size_t i = 0; i < activities.size(); i++) {
             // Check if the key exists in the map before accessing
             if (allocation.count(activities[i].id) > 0) {
@@ -469,7 +607,7 @@ public:
                 if (participant_id != -1) {
                     assigned_count++;
                     total_weight += activities[i].weight;
-                    
+                   
                     int p_idx = getParticipantIndex(participant_id);
                     if (p_idx != -1) { // Add check to ensure valid p_idx
                         participant_values[p_idx] += activities[i].weight;
@@ -477,23 +615,23 @@ public:
                 }
             }
         }
-        
+       
         // Calculate fairness metrics
         double fairness = calculateFairness(participant_values);
         double jains_index = calculateJainsIndex(participant_values);
-        
+       
         std::cout << "Assigned activities: " << assigned_count << "/" << activities.size() << std::endl;
         std::cout << "Total weight: " << total_weight << std::endl;
         std::cout << "Fairness: " << fairness << std::endl;
         std::cout << "Jain's index: " << jains_index << std::endl;
-        
+       
         // Print distribution for each participant
         std::cout << "Value distribution:" << std::endl;
         for (size_t i = 0; i < participants.size(); i++) {
             std::cout << "  Participant " << participants[i].id << ": " << participant_values[i] << std::endl;
         }
     }
-    
+   
     // Get participant index from ID
     int getParticipantIndex(int participant_id) const {
         for (size_t i = 0; i < participants.size(); i++) {
@@ -503,27 +641,27 @@ public:
         }
         return -1;
     }
-    
+   
     // Check if two activities overlap
     bool activitiesOverlap(const Activity& a, const Activity& b) const {
         return a.start_time < b.finish_time && a.finish_time > b.start_time;
     }
-    
+   
     // Calculate normalized fairness metric
     double calculateFairness(const std::vector<double>& values) const {
         double sum = std::accumulate(values.begin(), values.end(), 0.0);
         if (sum == 0) return 1.0;  // If all values are 0, we consider it perfectly fair
-        
+       
         double avg = sum / values.size();
-        
+       
         double sum_squared_diff = 0;
         for (double val : values) {
             sum_squared_diff += (val - avg) * (val - avg);
         }
-        
+       
         return 1.0 - std::sqrt(sum_squared_diff / (values.size() * avg * avg));
     }
-    
+   
     // Calculate Jain's fairness index
     double calculateJainsIndex(const std::vector<double>& values) const {
         double sum = std::accumulate(values.begin(), values.end(), 0.0);
@@ -531,21 +669,21 @@ public:
         for (double val : values) {
             sum_squared += val * val;
         }
-        
+       
         if (sum_squared == 0) return 1.0;  // If all values are 0, we consider it perfectly fair
         return (sum * sum) / (values.size() * sum_squared);
     }
-    
+   
     // Get final allocation
     std::unordered_map<int, int> getAllocation() const {
         return allocation;
     }
-    
+   
     // Set fairness epsilon parameter
     void setFairnessEpsilon(double epsilon) {
         fairness_epsilon = epsilon;
     }
-    
+   
     // Calculate adaptive fairness epsilon based on problem characteristics
     double calculateAdaptiveEpsilon() const {
         // Extract weights
@@ -553,24 +691,24 @@ public:
         for (const auto& activity : activities) {
             weights.push_back(activity.weight);
         }
-        
+       
         // Calculate statistical properties
         double mean = std::accumulate(weights.begin(), weights.end(), 0.0) / weights.size();
-        
+       
         double variance = 0;
         for (double w : weights) {
             variance += (w - mean) * (w - mean);
         }
         variance /= weights.size();
-        
+       
         double std_dev = std::sqrt(variance);
         double cv = (mean > 0) ? std_dev / mean : 0;  // Coefficient of variation, prevent division by 0
-        
+       
         // Calculate range
         double min_weight = *std::min_element(weights.begin(), weights.end());
         double max_weight = *std::max_element(weights.begin(), weights.end());
         double range = max_weight - min_weight;
-        
+       
         // Calculate skewness (simplified)
         double skewness = 0;
         if (std_dev > 0) { // Prevent division by 0
@@ -579,114 +717,280 @@ public:
             }
             skewness /= weights.size();
         }
-        
+       
         // Calculate base epsilon
         double base_epsilon = 0.05;
-        
+       
         // Adjust for distribution properties
         double epsilon_distribution = base_epsilon * (1 + cv) * (1 + std::abs(skewness) * 0.1);
         if (mean > 0) { // Prevent division by 0
             epsilon_distribution *= (range / mean * 0.1);
         }
-        
+       
         // Adjust for participant count
         double epsilon_participant = std::log10(participants.size() + 1) / std::log10(11);
-        
+       
         // Calculate final epsilon
         double epsilon = epsilon_distribution * (1 + epsilon_participant);
-        
+       
         // Bound epsilon
         return std::min(std::max(epsilon, 0.01), 0.25);
     }
+
+
+
+
+    // Check if resource usage fits within the participant's capacity
+    bool resourceUsageFits(int participant_idx, const Activity& activity, const std::unordered_map<std::string, double>& current_usage) const {
+        const Participant& participant = participants[participant_idx];
+
+
+
+
+        for (const auto& [resource, required] : activity.resources) {
+            auto it = current_usage.find(resource);
+            double used = (it != current_usage.end()) ? it->second : 0.0;
+
+
+
+
+            if (used + required > participant.resource_capacities.at(resource)) {
+                return false;
+            }
+        }
+
+
+
+
+        return true;
+    }
 };
 
-// Main function to demonstrate the algorithm
-int main() {
-    // Create activities
+
+
+
+
+
+
+
+// Generate SD-3 dataset
+std::vector<Activity> generateActivities(int numActivities, int maxStartTime, int maxDuration, int maxWeight) {
     std::vector<Activity> activities;
-    activities.emplace_back(1, 0, 3, 10);
-    activities.emplace_back(2, 1, 5, 20);
-    activities.emplace_back(3, 2, 6, 15);
-    activities.emplace_back(4, 4, 8, 25);
-    activities.emplace_back(5, 5, 9, 18);
-    activities.emplace_back(6, 7, 10, 12);
-    activities.emplace_back(7, 8, 11, 22);
-    activities.emplace_back(8, 9, 12, 16);
-    activities.emplace_back(9, 10, 14, 30);
-    activities.emplace_back(10, 13, 16, 24);
-    
-    // Add resource requirements
-    activities[0].addResource("cpu", 2);
-    activities[1].addResource("cpu", 1);
-    activities[1].addResource("memory", 3);
-    activities[2].addResource("cpu", 3);
-    activities[3].addResource("memory", 2);
-    activities[4].addResource("cpu", 1);
-    activities[4].addResource("memory", 1);
-    activities[5].addResource("cpu", 2);
-    activities[6].addResource("memory", 4);
-    activities[7].addResource("cpu", 1);
-    activities[8].addResource("cpu", 2);
-    activities[8].addResource("memory", 2);
-    activities[9].addResource("memory", 3);
-    
-    // Create participants
+    std::mt19937 gen(42); // Fixed seed for consistent results
+    std::uniform_int_distribution<> startDist(0, maxStartTime);
+    std::uniform_int_distribution<> durationDist(1, maxDuration);
+   
+    // Log-normal distribution for weights (creates highly skewed distribution)
+    // Parameters chosen to create a right-skewed distribution
+    double mu = std::log(maxWeight/4);  // Location parameter
+    double sigma = 0.8;                 // Shape parameter (higher = more skewed)
+    std::lognormal_distribution<> weightDist(mu, sigma);
+
+
+    for (int i = 1; i <= numActivities; ++i) {
+        int start = startDist(gen);
+        int duration = durationDist(gen);
+        // Generate weight using log-normal distribution and scale to desired range
+        double raw_weight = weightDist(gen);
+        int weight = std::max(1, std::min(maxWeight, static_cast<int>(raw_weight * maxWeight/10)));
+
+
+        activities.emplace_back(i, start, start + duration, weight);
+
+
+        // Add random resource requirements with higher variance
+        std::uniform_int_distribution<> resourceAmountDist(1, 5); // Increased resource requirements
+        activities.back().addResource("cpu", resourceAmountDist(gen));
+        activities.back().addResource("memory", resourceAmountDist(gen));
+    }
+
+
+    return activities;
+}
+
+
+std::vector<Activity> generateClusteredActivities(int numActivities, int numClusters, int clusterWidth, int maxWeight) {
+    std::vector<Activity> activities;
+    std::mt19937 gen(42); // Fixed seed for consistent results
+    std::uniform_int_distribution<> clusterStartDist(0, 100); // Random cluster start times
+    std::uniform_int_distribution<> durationDist(1, clusterWidth); // Activity durations within cluster
+    std::uniform_int_distribution<> clusterAssignmentDist(0, numClusters - 1); // Assign activities to clusters
+
+
+    // Log-normal distribution for weights (creates highly skewed distribution)
+    double mu = std::log(maxWeight / 4);  // Location parameter
+    double sigma = 0.8;                  // Shape parameter (higher = more skewed)
+    std::lognormal_distribution<> weightDist(mu, sigma);
+
+
+    // Generate cluster start times
+    std::vector<int> clusterStartTimes(numClusters);
+    for (int i = 0; i < numClusters; ++i) {
+        clusterStartTimes[i] = clusterStartDist(gen);
+    }
+
+
+    for (int i = 1; i <= numActivities; ++i) {
+        // Assign activity to a random cluster
+        int clusterIdx = clusterAssignmentDist(gen);
+        int clusterStart = clusterStartTimes[clusterIdx];
+
+
+        // Generate activity start time and duration within the cluster
+        int start = clusterStart + durationDist(gen);
+        int duration = durationDist(gen);
+
+
+        // Generate weight using log-normal distribution
+        double raw_weight = weightDist(gen);
+        int weight = std::max(1, std::min(maxWeight, static_cast<int>(raw_weight * maxWeight / 10)));
+
+
+        activities.emplace_back(i, start, start + duration, weight);
+
+
+        // Add random resource requirements
+        std::uniform_int_distribution<> resourceAmountDist(1, 5); // Increased resource requirements
+        activities.back().addResource("cpu", resourceAmountDist(gen));
+        activities.back().addResource("memory", resourceAmountDist(gen));
+    }
+
+
+    return activities;
+}
+
+
+std::vector<Participant> generateParticipants(int numParticipants, int maxCpu, int maxMemory) {
     std::vector<Participant> participants;
-    participants.emplace_back(101);
-    participants.emplace_back(102);
-    participants.emplace_back(103);
-    
-    // Add resource capacities
-    participants[0].addResourceCapacity("cpu", 3);
-    participants[0].addResourceCapacity("memory", 4);
-    participants[1].addResourceCapacity("cpu", 2);
-    participants[1].addResourceCapacity("memory", 3);
-    participants[2].addResourceCapacity("cpu", 4);
-    participants[2].addResourceCapacity("memory", 2);
-    
+    std::mt19937 gen(42); // Fixed seed for consistent results
+    std::uniform_int_distribution<> cpuDist(5, maxCpu);    // Minimum CPU of 5
+    std::uniform_int_distribution<> memoryDist(5, maxMemory); // Minimum memory of 5
+
+
+    for (int i = 1; i <= numParticipants; ++i) {
+        participants.emplace_back(100 + i);
+        participants.back().addResourceCapacity("cpu", cpuDist(gen));
+        participants.back().addResourceCapacity("memory", memoryDist(gen));
+    }
+
+
+    return participants;
+}
+
+
+
+
+int main() {
+    // Generate SD-4 dataset
+    int numActivities = 300;  // Edge case with 300 activities
+    int numParticipants = 8;  // 8 participants
+    int numClusters = 5;      // 5 temporal clusters
+    int clusterWidth = 10;    // Activities within a cluster span 10 time units
+    int maxWeight = 100;      // Maximum weight for activities
+    int maxCpu = 10;          // Maximum CPU capacity
+    int maxMemory = 10;       // Maximum memory capacity
+
+
+    std::vector<Activity> activities = generateClusteredActivities(numActivities, numClusters, clusterWidth, maxWeight);
+    std::vector<Participant> participants = generateParticipants(numParticipants, maxCpu, maxMemory);
+
+
     // Print problem instance
-    std::cout << "Problem Instance:" << std::endl;
-    std::cout << "Activities:" << std::endl;
+    std::cout << "Problem Instance (SD-4):" << std::endl;
+    std::cout << "Activities: " << activities.size() << std::endl;
+    std::cout << "Participants: " << participants.size() << std::endl;
+
+
+    // Print summary statistics
+    double total_weight = 0;
+    double min_weight = std::numeric_limits<double>::max();
+    double max_weight = 0;
+    std::vector<double> weights;
+    weights.reserve(activities.size());
+
+
     for (const auto& activity : activities) {
-        activity.print();
+        total_weight += activity.weight;
+        min_weight = std::min(min_weight, static_cast<double>(activity.weight));
+        max_weight = std::max(max_weight, static_cast<double>(activity.weight));
+        weights.push_back(activity.weight);
     }
-    
-    std::cout << "\nParticipants:" << std::endl;
-    for (const auto& participant : participants) {
-        participant.print();
+
+
+    // Sort weights for percentile calculation
+    std::sort(weights.begin(), weights.end());
+    double median = weights[weights.size() / 2];
+    double p90 = weights[static_cast<size_t>(weights.size() * 0.9)];
+    double p95 = weights[static_cast<size_t>(weights.size() * 0.95)];
+
+
+    double avg_weight = total_weight / activities.size();
+
+
+    std::cout << "\nActivity Weight Statistics:" << std::endl;
+    std::cout << "  Minimum weight: " << min_weight << std::endl;
+    std::cout << "  Maximum weight: " << max_weight << std::endl;
+    std::cout << "  Average weight: " << avg_weight << std::endl;
+    std::cout << "  Median weight: " << median << std::endl;
+    std::cout << "  90th percentile: " << p90 << std::endl;
+    std::cout << "  95th percentile: " << p95 << std::endl;
+    std::cout << "  Total weight: " << total_weight << std::endl;
+
+
+    // Calculate skewness
+    double sum_cubed_diff = 0;
+    for (double w : weights) {
+        sum_cubed_diff += std::pow(w - avg_weight, 3);
     }
-    
+    double skewness = (sum_cubed_diff / activities.size()) /
+                     std::pow(std::sqrt(std::accumulate(weights.begin(), weights.end(), 0.0,
+                     [avg_weight](double sum, double w) {
+                         return sum + std::pow(w - avg_weight, 2);
+                     }) / activities.size()), 3);
+
+
+    std::cout << "  Skewness: " << skewness << std::endl;
+
+
     // Create and run the hybrid algorithm
     std::cout << "\nRunning Hybrid Algorithm..." << std::endl;
     HybridAlgorithm algo(activities, participants);
-    
+
+
     // Calculate and set adaptive epsilon
     double adaptive_epsilon = algo.calculateAdaptiveEpsilon();
     std::cout << "Adaptive fairness epsilon: " << adaptive_epsilon << std::endl;
     algo.setFairnessEpsilon(adaptive_epsilon);
-    
+
+
     // Run the algorithm
     std::cout << "\nExecuting Algorithm..." << std::endl;
     algo.run();
-    
+
+
     // Print final allocation
     std::cout << "\nFinal Allocation:" << std::endl;
     auto allocation = algo.getAllocation();
+    int assigned_count = 0;
+    double total_assigned_weight = 0;
+
+
     for (const auto& activity : activities) {
-        if (allocation.count(activity.id) > 0) {  // Check if key exists
+        if (allocation.count(activity.id) > 0) {
             int participant_id = allocation[activity.id];
             if (participant_id != -1) {
-                std::cout << "Activity " << activity.id << " (weight=" << activity.weight 
-                            << ") assigned to Participant " << participant_id << std::endl;
-            } else {
-                std::cout << "Activity " << activity.id << " (weight=" << activity.weight 
-                          << ") not assigned" << std::endl;
+                assigned_count++;
+                total_assigned_weight += activity.weight;
             }
-        } else {
-            std::cout << "Activity " << activity.id << " (weight=" << activity.weight 
-                      << ") not in allocation map" << std::endl;
         }
     }
-    
+
+
+    std::cout << "Assigned activities: " << assigned_count << "/" << activities.size()
+              << " (" << (assigned_count * 100.0 / activities.size()) << "%)" << std::endl;
+    std::cout << "Total assigned weight: " << total_assigned_weight
+              << " (" << (total_assigned_weight * 100.0 / total_weight) << "% of total weight)" << std::endl;
+
+
     return 0;
 }
