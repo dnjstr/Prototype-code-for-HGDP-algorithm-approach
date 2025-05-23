@@ -22,7 +22,8 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "detail": "compiler: C:/msys64/ucrt64/bin/g++.exe"
         }
     ]
 }
