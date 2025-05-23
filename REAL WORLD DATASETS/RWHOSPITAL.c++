@@ -13,6 +13,8 @@
 #include <string>
 
 
+
+
 // Enum for medical activity types
 enum class ActivityType {
     SURGERY,
@@ -24,6 +26,8 @@ enum class ActivityType {
 };
 
 
+
+
 // Enum for healthcare professional types
 enum class ProfessionalType {
     SURGEON,
@@ -33,6 +37,8 @@ enum class ProfessionalType {
     TECHNICIAN,
     THERAPIST
 };
+
+
 
 
 // Helper function to convert activity type to string
@@ -49,6 +55,8 @@ std::string activityTypeToString(ActivityType type) {
 }
 
 
+
+
 // Helper function to convert professional type to string
 std::string professionalTypeToString(ProfessionalType type) {
     switch (type) {
@@ -61,6 +69,8 @@ std::string professionalTypeToString(ProfessionalType type) {
         default: return "Unknown";
     }
 }
+
+
 
 
 // Class representing a medical activity
@@ -76,10 +86,14 @@ public:
     std::unordered_map<std::string, double> resources;
 
 
+
+
     Activity(int id, double start, double finish, double weight, ActivityType type,
              const std::string& patient, int urgency)
         : id(id), start_time(start), finish_time(finish), weight(weight),
           type(type), patient_id(patient), urgency_level(urgency) {}
+
+
 
 
     // Add resource requirement
@@ -88,10 +102,14 @@ public:
     }
 
 
+
+
     // Value density (weight per unit time)
     double valueDensity() const {
         return weight / (finish_time - start_time);
     }
+
+
 
 
     // Print activity details
@@ -101,6 +119,8 @@ public:
                   << ", patient=" << patient_id << ", urgency=" << urgency_level << std::endl;
     }
 };
+
+
 
 
 // Class representing a healthcare professional
@@ -133,6 +153,8 @@ public:
 };
 
 
+
+
 // Class representing a time slot
 class TimeSlot {
 public:
@@ -151,6 +173,8 @@ public:
         return end_time - start_time;
     }
 };
+
+
 
 
 // Class implementing the hybrid algorithm
@@ -175,6 +199,8 @@ public:
         auto start_time = std::chrono::high_resolution_clock::now();
 
 
+
+
         std::cout << "Phase 1: Initial Greedy Allocation" << std::endl;
         auto phase1_start = std::chrono::high_resolution_clock::now();
         initialGreedyAllocation();
@@ -183,6 +209,8 @@ public:
         std::cout << "Phase 1 runtime: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(phase1_end - phase1_start).count()
                   << " ms" << std::endl;
+
+
 
 
         std::cout << "\nPhase 2: Dynamic Programming Refinement" << std::endl;
@@ -195,6 +223,8 @@ public:
                   << " ms" << std::endl;
 
 
+
+
         std::cout << "\nPhase 3: Fairness Optimization" << std::endl;
         auto phase3_start = std::chrono::high_resolution_clock::now();
         fairnessOptimization();
@@ -203,6 +233,8 @@ public:
         std::cout << "Phase 3 runtime: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(phase3_end - phase3_start).count()
                   << " ms" << std::endl;
+
+
 
 
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -219,6 +251,8 @@ public:
         }
 
 
+
+
         std::sort(sorted_activities.begin(), sorted_activities.end(),
                   [this](int a, int b) {
                       if (activities[a].urgency_level != activities[b].urgency_level) {
@@ -228,9 +262,13 @@ public:
                   });
 
 
+
+
         // Initialize available time and resource usage for each participant
         std::vector<double> available_time(participants.size(), 0);
         std::vector<std::unordered_map<std::string, double>> resource_usage(participants.size());
+
+
 
 
         // Allocate activities
@@ -238,9 +276,13 @@ public:
             const Activity& activity = activities[activity_idx];
 
 
+
+
             // Find the best participant for this activity
             int best_participant = -1;
             double min_value = std::numeric_limits<double>::max();
+
+
 
 
             for (size_t j = 0; j < participants.size(); j++) {
@@ -255,10 +297,14 @@ public:
             }
 
 
+
+
             // Assign the activity if a valid participant is found
             if (best_participant != -1) {
                 allocation[activity.id] = participants[best_participant].id;
                 available_time[best_participant] = activity.finish_time;
+
+
 
 
                 // Update resource usage
@@ -275,6 +321,8 @@ public:
             const Participant& participant = participants[p_idx];
 
 
+
+
             // Collect activities assigned to this participant
             std::vector<int> assigned_activities;
             for (size_t i = 0; i < activities.size(); i++) {
@@ -282,6 +330,8 @@ public:
                     assigned_activities.push_back(i);
                 }
             }
+
+
 
 
             // Find all unassigned activities that this participant could potentially handle
@@ -294,13 +344,19 @@ public:
             }
 
 
+
+
             // Combine assigned and candidate activities
             std::vector<int> all_activities = assigned_activities;
             all_activities.insert(all_activities.end(), candidate_activities.begin(), candidate_activities.end());
 
 
+
+
             // Run weighted interval scheduling on the combined set
             std::vector<int> optimal_subset = weightedIntervalScheduling(all_activities);
+
+
 
 
             // Update allocation - only keep activities assigned to this participant
@@ -318,8 +374,12 @@ public:
         bool improved = true;
 
 
+
+
         while (improved) {
             improved = false;
+
+
 
 
             // Calculate current value distribution
@@ -335,14 +395,20 @@ public:
             }
 
 
+
+
             // Calculate target fair value
             double total_value = std::accumulate(values.begin(), values.end(), 0.0);
             double target_value = total_value / participants.size();
 
 
+
+
             // Identify high-value and low-value participants
             std::vector<int> high_value_participants;
             std::vector<int> low_value_participants;
+
+
 
 
             for (size_t i = 0; i < participants.size(); i++) {
@@ -354,6 +420,8 @@ public:
             }
 
 
+
+
             // Optimize fairness by transferring activities
             for (int high_idx : high_value_participants) {
                 for (int low_idx : low_value_participants) {
@@ -363,13 +431,19 @@ public:
                     }
 
 
+
+
                     // Find the best activity to transfer
                     int best_activity = -1;
                     double best_improvement = -1;
 
 
+
+
                     for (size_t i = 0; i < activities.size(); i++) {
                         const Activity& activity = activities[i];
+
+
 
 
                         if (allocation[activity.id] == participants[high_idx].id &&
@@ -378,15 +452,23 @@ public:
                                                        std::abs(values[low_idx] - target_value);
 
 
+
+
                             double new_high_value = values[high_idx] - activity.weight;
                             double new_low_value = values[low_idx] + activity.weight;
+
+
 
 
                             double new_deviation = std::abs(new_high_value - target_value) +
                                                    std::abs(new_low_value - target_value);
 
 
+
+
                             double improvement = current_deviation - new_deviation;
+
+
 
 
                             if (improvement > best_improvement) {
@@ -395,6 +477,8 @@ public:
                             }
                         }
                     }
+
+
 
 
                     // Transfer the best activity if found
@@ -409,6 +493,8 @@ public:
             }
         }
     }
+
+
 
 
     // Check if professional is compatible with activity type
@@ -535,7 +621,7 @@ public:
         return result;
     }
    
-    // Print allocation summary
+// Print allocation summary
     void printAllocationSummary() const {
         int assigned_count = 0;
         double total_weight = 0;
@@ -561,8 +647,14 @@ public:
         double fairness = calculateFairness(participant_values);
         double jains_index = calculateJainsIndex(participant_values);
        
+        // Calculate weighted completion and total importance
+        double weighted_completion = calculateWeightedCompletion();
+        double total_importance = calculateTotalImportance();
+       
         std::cout << "Assigned activities: " << assigned_count << "/" << activities.size() << std::endl;
         std::cout << "Total weight: " << total_weight << std::endl;
+        std::cout << "Weighted completion: " << std::fixed << std::setprecision(0) << weighted_completion << std::endl;
+        std::cout << "Total importance: " << std::fixed << std::setprecision(2) << total_importance << std::endl;
         std::cout << "Fairness: " << fairness << std::endl;
         std::cout << "Jain's index: " << jains_index << std::endl;
        
@@ -573,6 +665,35 @@ public:
                       << " " << participants[i].name << ": " << participant_values[i] << std::endl;
         }
     }
+
+
+    // Calculate weighted completion rate
+    double calculateWeightedCompletion() const {
+        double assigned_weight = 0;
+       
+        for (const auto& activity : activities) {
+            if (allocation.count(activity.id) > 0 && allocation.at(activity.id) != -1) {
+                assigned_weight += activity.weight;
+            }
+        }
+       
+        return assigned_weight;
+    }
+   
+    // Calculate total importance (sum of urgency * weight for assigned activities)
+    double calculateTotalImportance() const {
+        double total_importance = 0;
+       
+        for (const auto& activity : activities) {
+            if (allocation.count(activity.id) > 0 && allocation.at(activity.id) != -1) {
+                total_importance += activity.urgency_level * activity.weight;
+            }
+        }
+       
+        return total_importance;
+    }
+
+
 
 
     // Helper functions (same as before)
@@ -664,14 +785,20 @@ public:
     }
 
 
+
+
     bool resourceUsageFits(int participant_idx, const Activity& activity,
                           const std::unordered_map<std::string, double>& current_usage) const {
         const Participant& participant = participants[participant_idx];
 
 
+
+
         for (const auto& [resource, required] : activity.resources) {
             auto it = current_usage.find(resource);
             double used = (it != current_usage.end()) ? it->second : 0.0;
+
+
 
 
             if (used + required > participant.resource_capacities.at(resource)) {
@@ -680,9 +807,13 @@ public:
         }
 
 
+
+
         return true;
     }
 };
+
+
 
 
 // Generate synthetic hospital activities
@@ -794,6 +925,8 @@ std::vector<Activity> generateHospitalActivities(int numActivities, int maxTimeH
 }
 
 
+
+
 // Generate synthetic healthcare professionals
 std::vector<Participant> generateHealthcareProfessionals(int numProfessionals) {
     std::vector<Participant> professionals;
@@ -903,6 +1036,8 @@ std::vector<Participant> generateHealthcareProfessionals(int numProfessionals) {
    
     return professionals;
 }
+
+
 
 
 int main() {

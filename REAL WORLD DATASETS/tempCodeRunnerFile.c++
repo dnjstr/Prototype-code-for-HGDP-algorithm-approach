@@ -1,2 +1,2 @@
 
-    double assignmentRate = (assignedStoryPoints / totalStoryPoint
+}
