@@ -688,87 +688,103 @@ public:
 // Generate synthetic hospital activities
 std::vector<Activity> generateHospitalActivities(int numActivities, int maxTimeHours = 24) {
     std::vector<Activity> activities;
-    std::mt19937 gen(42); // Fixed seed for reproducibility
+   
+    // Use random seed for true randomness each run
+    std::random_device rd;
+    std::mt19937 gen(rd()); // Random seed instead of fixed seed
    
     // Time distributions (in hours)
-    std::uniform_real_distribution<> startDist(0, maxTimeHours - 1);
+    std::uniform_real_distribution<> startDist(0, maxTimeHours - 2); // Leave room for duration
    
-    // Activity type probabilities
+    // Activity type probabilities - Emergency department focused
     std::vector<ActivityType> activityTypes = {
-        ActivityType::SURGERY, ActivityType::CONSULTATION, ActivityType::EMERGENCY,
-        ActivityType::DIAGNOSTIC, ActivityType::THERAPY, ActivityType::ROUTINE_CHECKUP
+        ActivityType::EMERGENCY, ActivityType::EMERGENCY, ActivityType::EMERGENCY, // Higher emergency probability
+        ActivityType::DIAGNOSTIC, ActivityType::DIAGNOSTIC,
+        ActivityType::CONSULTATION, ActivityType::CONSULTATION,
+        ActivityType::SURGERY,
+        ActivityType::THERAPY,
+        ActivityType::ROUTINE_CHECKUP
     };
     std::uniform_int_distribution<> typeDist(0, activityTypes.size() - 1);
    
-    // Urgency distribution (1-5)
-    std::discrete_distribution<> urgencyDist({10, 20, 30, 25, 15}); // More lower urgency cases
+    // Higher urgency distribution for emergency department (1-5)
+    std::discrete_distribution<> urgencyDist({5, 10, 25, 35, 25}); // More high urgency cases
    
     for (int i = 1; i <= numActivities; ++i) {
         double start = startDist(gen);
         ActivityType type = activityTypes[typeDist(gen)];
         int urgency = urgencyDist(gen) + 1; // Convert to 1-5 scale
        
-        // Duration and weight based on activity type
+        // Duration and weight based on activity type - Emergency department focused
         double duration, weight;
         switch (type) {
             case ActivityType::SURGERY:
-                duration = std::uniform_real_distribution<>(2.0, 6.0)(gen);
-                weight = std::uniform_real_distribution<>(80.0, 100.0)(gen);
+                duration = std::uniform_real_distribution<>(1.5, 4.0)(gen); // Shorter emergency surgeries
+                weight = std::uniform_real_distribution<>(85.0, 100.0)(gen);
                 break;
             case ActivityType::CONSULTATION:
-                duration = std::uniform_real_distribution<>(0.5, 1.5)(gen);
-                weight = std::uniform_real_distribution<>(30.0, 60.0)(gen);
+                duration = std::uniform_real_distribution<>(0.25, 1.0)(gen); // Quick consultations
+                weight = std::uniform_real_distribution<>(25.0, 50.0)(gen);
                 break;
             case ActivityType::EMERGENCY:
-                duration = std::uniform_real_distribution<>(1.0, 4.0)(gen);
-                weight = std::uniform_real_distribution<>(70.0, 95.0)(gen);
+                duration = std::uniform_real_distribution<>(0.5, 3.0)(gen); // Variable emergency times
+                weight = std::uniform_real_distribution<>(60.0, 95.0)(gen);
                 break;
             case ActivityType::DIAGNOSTIC:
-                duration = std::uniform_real_distribution<>(0.5, 2.0)(gen);
-                weight = std::uniform_real_distribution<>(40.0, 70.0)(gen);
+                duration = std::uniform_real_distribution<>(0.5, 1.5)(gen); // Quick diagnostics
+                weight = std::uniform_real_distribution<>(35.0, 65.0)(gen);
                 break;
             case ActivityType::THERAPY:
-                duration = std::uniform_real_distribution<>(1.0, 3.0)(gen);
-                weight = std::uniform_real_distribution<>(50.0, 75.0)(gen);
+                duration = std::uniform_real_distribution<>(1.0, 2.5)(gen);
+                weight = std::uniform_real_distribution<>(45.0, 70.0)(gen);
                 break;
             case ActivityType::ROUTINE_CHECKUP:
-                duration = std::uniform_real_distribution<>(0.5, 1.0)(gen);
-                weight = std::uniform_real_distribution<>(20.0, 40.0)(gen);
+                duration = std::uniform_real_distribution<>(0.25, 0.75)(gen); // Quick checkups
+                weight = std::uniform_real_distribution<>(15.0, 35.0)(gen);
                 break;
         }
        
-        // Adjust weight based on urgency
-        weight *= (0.8 + 0.1 * urgency);
+        // Ensure activity doesn't exceed time horizon
+        if (start + duration > maxTimeHours) {
+            duration = maxTimeHours - start - 0.1; // Leave small buffer
+        }
        
-        std::string patient_id = "P" + std::to_string(1000 + i);
+        // Adjust weight based on urgency (emergency department priority)
+        weight *= (0.7 + 0.15 * urgency);
+       
+        std::string patient_id = "ED" + std::to_string(2000 + i); // Emergency department prefix
         activities.emplace_back(i, start, start + duration, weight, type, patient_id, urgency);
        
-        // Add resource requirements based on activity type
+        // Add resource requirements based on activity type - Emergency focused
         switch (type) {
             case ActivityType::SURGERY:
-                activities.back().addResource("operating_room", 1);
-                activities.back().addResource("medical_equipment", std::uniform_int_distribution<>(2, 4)(gen));
+                activities.back().addResource("emergency_or", 1);
+                activities.back().addResource("medical_equipment", std::uniform_int_distribution<>(2, 3)(gen));
                 activities.back().addResource("nursing_support", std::uniform_int_distribution<>(2, 3)(gen));
                 break;
             case ActivityType::CONSULTATION:
-                activities.back().addResource("consultation_room", 1);
+                activities.back().addResource("triage_room", 1);
                 activities.back().addResource("medical_equipment", 1);
                 break;
             case ActivityType::EMERGENCY:
                 activities.back().addResource("emergency_bed", 1);
                 activities.back().addResource("medical_equipment", std::uniform_int_distribution<>(1, 3)(gen));
                 activities.back().addResource("nursing_support", std::uniform_int_distribution<>(1, 2)(gen));
+                if (urgency >= 4) {
+                    activities.back().addResource("resuscitation_equipment", 1);
+                }
                 break;
             case ActivityType::DIAGNOSTIC:
-                activities.back().addResource("diagnostic_equipment", 1);
+                activities.back().addResource("diagnostic_station", 1);
                 activities.back().addResource("medical_equipment", std::uniform_int_distribution<>(1, 2)(gen));
                 break;
             case ActivityType::THERAPY:
-                activities.back().addResource("therapy_room", 1);
+                activities.back().addResource("treatment_room", 1);
                 activities.back().addResource("therapy_equipment", std::uniform_int_distribution<>(1, 2)(gen));
+                activities.back().addResource("nursing_support", 1);
                 break;
             case ActivityType::ROUTINE_CHECKUP:
-                activities.back().addResource("examination_room", 1);
+                activities.back().addResource("triage_room", 1);
                 activities.back().addResource("medical_equipment", 1);
                 break;
         }
@@ -781,28 +797,36 @@ std::vector<Activity> generateHospitalActivities(int numActivities, int maxTimeH
 // Generate synthetic healthcare professionals
 std::vector<Participant> generateHealthcareProfessionals(int numProfessionals) {
     std::vector<Participant> professionals;
-    std::mt19937 gen(42);
    
-    // Professional type distribution
+    // Use random seed for true randomness each run
+    std::random_device rd;
+    std::mt19937 gen(rd()); // Random seed instead of fixed seed
+   
+    // Emergency department staff distribution
     std::vector<ProfessionalType> profTypes = {
-        ProfessionalType::SURGEON, ProfessionalType::PHYSICIAN, ProfessionalType::NURSE,
-        ProfessionalType::SPECIALIST, ProfessionalType::TECHNICIAN, ProfessionalType::THERAPIST
+        ProfessionalType::PHYSICIAN, ProfessionalType::PHYSICIAN, ProfessionalType::PHYSICIAN, // More physicians
+        ProfessionalType::NURSE, ProfessionalType::NURSE, ProfessionalType::NURSE, ProfessionalType::NURSE, // More nurses
+        ProfessionalType::SURGEON, ProfessionalType::SURGEON, // Emergency surgeons
+        ProfessionalType::SPECIALIST,
+        ProfessionalType::TECHNICIAN, ProfessionalType::TECHNICIAN,
+        ProfessionalType::THERAPIST
     };
-    std::discrete_distribution<> profDist({10, 25, 30, 15, 10, 10}); // More nurses and physicians
+    std::uniform_int_distribution<> profDist(0, profTypes.size() - 1);
    
-    // Name prefixes for different professional types
-    std::vector<std::string> surgeonNames = {"Dr. Smith", "Dr. Johnson", "Dr. Williams", "Dr. Brown", "Dr. Davis"};
-    std::vector<std::string> physicianNames = {"Dr. Miller", "Dr. Wilson", "Dr. Moore", "Dr. Taylor", "Dr. Anderson"};
-    std::vector<std::string> nurseNames = {"Nurse Parker", "Nurse Clark", "Nurse Lewis", "Nurse Walker", "Nurse Hall"};
-    std::vector<std::string> specialistNames = {"Dr. Allen", "Dr. Young", "Dr. King", "Dr. Wright", "Dr. Lopez"};
-    std::vector<std::string> technicianNames = {"Tech. Hill", "Tech. Green", "Tech. Adams", "Tech. Baker", "Tech. Nelson"};
-    std::vector<std::string> therapistNames = {"Ther. Carter", "Ther. Mitchell", "Ther. Perez", "Ther. Roberts", "Ther. Turner"};
+    // Emergency department specific names
+    std::vector<std::string> physicianNames = {"Dr. Emergency", "Dr. Trauma", "Dr. Critical", "Dr. Urgent", "Dr. Rapid"};
+    std::vector<std::string> nurseNames = {"RN Triage", "RN Response", "RN Acute", "RN Care", "RN Swift"};
+    std::vector<std::string> surgeonNames = {"Dr. Blade", "Dr. Scalpel", "Dr. Stitch", "Dr. Repair", "Dr. Mend"};
+    std::vector<std::string> specialistNames = {"Dr. Expert", "Dr. Focus", "Dr. Precision", "Dr. Insight", "Dr. Analysis"};
+    std::vector<std::string> technicianNames = {"Tech Scan", "Tech Image", "Tech Test", "Tech Lab", "Tech Vital"};
+    std::vector<std::string> therapistNames = {"PT Mobility", "PT Recovery", "PT Strength", "PT Motion", "PT Heal"};
    
-    // Department names
-    std::vector<std::string> departments = {"Cardiology", "Neurology", "Emergency", "Surgery", "Internal Medicine",
-                                          "Radiology", "Rehabilitation", "Pediatrics", "Oncology", "Orthopedics"};
+    // Emergency department specific departments
+    std::vector<std::string> departments = {"Emergency Medicine", "Trauma Surgery", "Critical Care", "Emergency Radiology",
+                                          "Emergency Cardiology", "Pediatric Emergency", "Psychiatric Emergency",
+                                          "Emergency Orthopedics", "Toxicology", "Emergency Neurology"};
     std::uniform_int_distribution<> deptDist(0, departments.size() - 1);
-    std::uniform_int_distribution<> experienceDist(1, 25); // 1-25 years experience
+    std::uniform_int_distribution<> experienceDist(2, 20); // 2-20 years emergency experience
    
     for (int i = 1; i <= numProfessionals; ++i) {
         ProfessionalType type = profTypes[profDist(gen)];
@@ -831,44 +855,47 @@ std::vector<Participant> generateHealthcareProfessionals(int numProfessionals) {
                 break;
         }
        
-        name += " " + std::to_string(i); // Add unique identifier
+        name += "-" + std::to_string(100 + i); // Add unique identifier
         int experience = experienceDist(gen);
         std::string department = departments[deptDist(gen)];
        
-        professionals.emplace_back(200 + i, type, name, experience, department);
+        professionals.emplace_back(300 + i, type, name, experience, department);
        
-        // Add resource capacities based on professional type and experience
+        // Add emergency department specific resource capacities
         switch (type) {
             case ProfessionalType::SURGEON:
-                professionals.back().addResourceCapacity("operating_room", 1);
-                professionals.back().addResourceCapacity("medical_equipment", 3 + experience/5);
-                professionals.back().addResourceCapacity("nursing_support", 2 + experience/10);
+                professionals.back().addResourceCapacity("emergency_or", 1);
+                professionals.back().addResourceCapacity("medical_equipment", 3 + experience/4);
+                professionals.back().addResourceCapacity("nursing_support", 2 + experience/8);
+                professionals.back().addResourceCapacity("resuscitation_equipment", 1);
                 break;
             case ProfessionalType::PHYSICIAN:
-                professionals.back().addResourceCapacity("consultation_room", 1);
-                professionals.back().addResourceCapacity("emergency_bed", 1);
-                professionals.back().addResourceCapacity("examination_room", 1);
-                professionals.back().addResourceCapacity("medical_equipment", 2 + experience/8);
+                professionals.back().addResourceCapacity("triage_room", 1);
+                professionals.back().addResourceCapacity("emergency_bed", 2);
+                professionals.back().addResourceCapacity("treatment_room", 1);
+                professionals.back().addResourceCapacity("medical_equipment", 2 + experience/6);
+                professionals.back().addResourceCapacity("resuscitation_equipment", 1);
                 break;
             case ProfessionalType::NURSE:
-                professionals.back().addResourceCapacity("nursing_support", 3);
-                professionals.back().addResourceCapacity("emergency_bed", 1);
-                professionals.back().addResourceCapacity("examination_room", 1);
-                professionals.back().addResourceCapacity("therapy_room", 1);
-                professionals.back().addResourceCapacity("medical_equipment", 1 + experience/10);
+                professionals.back().addResourceCapacity("nursing_support", 4); // High nursing support capacity
+                professionals.back().addResourceCapacity("emergency_bed", 2);
+                professionals.back().addResourceCapacity("triage_room", 1);
+                professionals.back().addResourceCapacity("treatment_room", 1);
+                professionals.back().addResourceCapacity("medical_equipment", 1 + experience/8);
                 break;
             case ProfessionalType::SPECIALIST:
-                professionals.back().addResourceCapacity("consultation_room", 1);
-                professionals.back().addResourceCapacity("medical_equipment", 2 + experience/6);
-                professionals.back().addResourceCapacity("diagnostic_equipment", 1);
+                professionals.back().addResourceCapacity("triage_room", 1);
+                professionals.back().addResourceCapacity("emergency_bed", 1);
+                professionals.back().addResourceCapacity("medical_equipment", 2 + experience/5);
+                professionals.back().addResourceCapacity("diagnostic_station", 1);
                 break;
             case ProfessionalType::TECHNICIAN:
-                professionals.back().addResourceCapacity("diagnostic_equipment", 2);
-                professionals.back().addResourceCapacity("medical_equipment", 2 + experience/8);
+                professionals.back().addResourceCapacity("diagnostic_station", 2);
+                professionals.back().addResourceCapacity("medical_equipment", 2 + experience/6);
                 break;
             case ProfessionalType::THERAPIST:
-                professionals.back().addResourceCapacity("therapy_room", 1);
-                professionals.back().addResourceCapacity("therapy_equipment", 2 + experience/10);
+                professionals.back().addResourceCapacity("treatment_room", 1);
+                professionals.back().addResourceCapacity("therapy_equipment", 2 + experience/8);
                 professionals.back().addResourceCapacity("nursing_support", 1);
                 break;
         }
@@ -879,9 +906,9 @@ std::vector<Participant> generateHealthcareProfessionals(int numProfessionals) {
 
 
 int main() {
-    // Generate Hospital Dataset
-    int numActivities = 150;      // Medical activities for the day
-    int numProfessionals = 12;    // Healthcare professionals
+// Generate Emergency Department Dataset
+    int numActivities = 75;       // Emergency department activities for the day
+    int numProfessionals = 12;    // Emergency department staff
     int maxTimeHours = 24;        // 24-hour time horizon
    
     std::vector<Activity> activities = generateHospitalActivities(numActivities, maxTimeHours);
@@ -1008,4 +1035,3 @@ int main() {
    
     return 0;
 }
-

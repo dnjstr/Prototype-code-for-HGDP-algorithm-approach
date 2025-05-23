@@ -916,9 +916,9 @@ int main() {
     std::cout << "Hybrid Algorithm: Priority + Dynamic Programming + Load Balancing" << std::endl;
     std::cout << std::endl;
     
-    // Generate test data
-    int numTasks = 50;
-    int numDevelopers = 8;
+    // Generate test data for Project-RW
+    int numTasks = 180;         // 180 activities
+    int numDevelopers = 9;      // 9 participants
     
     std::cout << "Generating " << numTasks << " tasks and " << numDevelopers << " developers..." << std::endl;
     
