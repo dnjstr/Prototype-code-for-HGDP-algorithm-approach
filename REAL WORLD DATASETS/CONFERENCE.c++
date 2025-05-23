@@ -613,6 +613,12 @@ public:
         std::vector<double> participant_values(participants.size(), 0);
 
 
+        // For session type assignment
+        static const std::vector<std::string> session_types = {"Talk", "Workshop", "Panel", "Poster", "Tutorial"};
+        std::mt19937 gen(42);
+
+
+        std::cout << "\n--- Scheduled Sessions (Details) ---\n";
         for (size_t i = 0; i < activities.size(); i++) {
             if (allocation.count(activities[i].id) > 0) {
                 int participant_id = allocation.at(activities[i].id);
@@ -623,6 +629,33 @@ public:
                     if (p_idx != -1) {
                         participant_values[p_idx] += activities[i].weight;
                     }
+
+
+                    // Print session details
+                    const Activity& act = activities[i];
+                    // Assign a session type based on id for reproducibility
+                    std::string session_type = session_types[act.id % session_types.size()];
+
+
+                    // Convert start/end time to HH:MM
+                    int start_h = static_cast<int>(act.start_time) / 60;
+                    int start_m = static_cast<int>(act.start_time) % 60;
+                    int end_h = static_cast<int>(act.finish_time) / 60;
+                    int end_m = static_cast<int>(act.finish_time) % 60;
+
+
+                    std::cout << "Session " << act.id << " (" << session_type << ")"
+                              << " | " << std::setw(2) << std::setfill('0') << start_h << ":" << std::setw(2) << start_m
+                              << " - " << std::setw(2) << end_h << ":" << std::setw(2) << end_m
+                              << " | Importance: " << act.weight
+                              << " | Room: " << participant_id
+                              << " | Resources: ";
+
+
+                    for (const auto& [res, amt] : act.resources) {
+                        std::cout << res << "=" << amt << " ";
+                    }
+                    std::cout << std::endl;
                 }
             }
         }
@@ -642,8 +675,9 @@ public:
         last_weighted_completion = weighted_completion;
 
 
-        std::cout << "Assigned activities: " << assigned_count << "/" << activities.size() << std::endl;
-        std::cout << "Total weight: " << total_weight << std::endl;
+        std::cout << "\nSummary:\n";
+        std::cout << "Assigned sessions: " << assigned_count << "/" << activities.size() << std::endl;
+        std::cout << "Total importance: " << total_weight << std::endl;
         std::cout << "Fairness: " << fairness << std::endl;
         std::cout << "Jain's index: " << jains_index << std::endl;
         std::cout << "Normalized makespan: " << makespan << std::endl;

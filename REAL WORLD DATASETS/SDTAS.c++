@@ -191,6 +191,7 @@ public:
         priorityBasedAllocation();
         auto phase1_end = std::chrono::high_resolution_clock::now();
         printAllocationSummary();
+        printTotalWeightedCompletion("Phase 1");
         std::cout << "Phase 1 runtime: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(phase1_end - phase1_start).count()
                   << " ms" << std::endl;
@@ -200,6 +201,7 @@ public:
         sprintAwareDynamicProgramming();
         auto phase2_end = std::chrono::high_resolution_clock::now();
         printAllocationSummary();
+        printTotalWeightedCompletion("Phase 2");
         std::cout << "Phase 2 runtime: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(phase2_end - phase2_start).count()
                   << " ms" << std::endl;
@@ -209,6 +211,7 @@ public:
         teamLoadBalancing();
         auto phase3_end = std::chrono::high_resolution_clock::now();
         printAllocationSummary();
+        printTotalWeightedCompletion("Phase 3");
         std::cout << "Phase 3 runtime: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(phase3_end - phase3_start).count()
                   << " ms" << std::endl;
@@ -696,6 +699,17 @@ public:
     
     void setFairnessEpsilon(double epsilon) {
         fairness_epsilon = epsilon;
+    }
+
+    void printTotalWeightedCompletion(const std::string& phase) const {
+        double totalWeightedCompletion = 0;
+        for (const auto& task : tasks) {
+            if (allocation.count(task.id) && allocation.at(task.id) != -1) {
+                totalWeightedCompletion += task.story_points * task.finish_time;
+            }
+        }
+        std::cout << "Total Weighted Completion after " << phase << ": "
+                  << std::setprecision(2) << std::fixed << totalWeightedCompletion << std::endl;
     }
 };
 
